@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using ToDoListApp.Data;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Getting ConnectionString loaded automatically from appsettings.json
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//Add Database Connection
+builder.Services.AddDbContext<TodoListDbContext>(options =>
+                    options.UseNpgsql(connectionString));
 
 // Add services to the container.
 builder.Services.AddRazorPages();

@@ -1,7 +1,86 @@
 ﻿@page "/"
+@inject TodoListDbContext _context
+@inject ILocalStorageService _localStorage
 
-<PageTitle>Index</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="d-flex flex-row">
+    <input type="text" @bind-value="newTask" placeholder="Add a new task"/>
+    <button @onclick="AddNewTodo">Add</button>
+</div>
 
-Welcome to your new app.
+<div>
+    <ol>
+        <li>
+            @foreach(var todo in todos)
+            {   
+                <div class="d-flex flex-row">
+                    <input type="checkbox" @bind-value="todo.IsCompleted"/>
+                    <label class="@IsCompleted(todo.IsCompleted)">@todo.Task</label>
+                    <button @onclick="(()=> DeleteTodo(todo))">Delete</button>
+                </div>
+            }
+        </li>
+    </ol>
+</div>
+
+
+
+@code{
+    private IList<TodoItem> todos { get; set; } = new List<TodoItem>();
+    private string newTask = "";
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender){
+            var storagedData = await _localStorage.GetItemAsync<IList<TodoItem>>("todos");
+            if(storagedData != null)
+            {
+                todos = storagedData;
+            }
+            else{
+                todos = await _context.TodoItems.ToListAsync();
+            }
+            StateHasChanged();
+        }
+        
+    }
+
+    private string IsCompleted(bool isCompleted)
+    {
+        return isCompleted ? "item-completed" : "";
+    }
+
+    private async Task AddNewTodo()
+    {
+        if(!string.IsNullOrWhiteSpace(newTask))
+        {
+            var newTodo = new TodoItem
+            {
+                Task = newTask,
+                IsCompleted = false,
+                CreatedDate = DateTime.Now
+            };
+            todos.Add(newTodo);
+            await _localStorage.SetItemAsync("todos", todos);
+            newTask = "";
+            StateHasChanged();
+        }
+        
+    }
+    
+    private async Task DeleteTodo(TodoItem todo)
+    {
+        todos.Remove(todo);
+        await _localStorage.SetItemAsync("todos", todos);
+        StateHasChanged();
+    }
+
+    private async Task SaveTodosAsync()
+    {
+        var storedData = await _localStorage.GetItemAsync<IList<TodoItem>>("todos");
+        if(storedData != null && storedData.Count == todos.Count)
+        {
+            _context.TodoItems.UpdateRange(storedData);
+            await _context.SaveChangesAsync();
+        }
+    }
+}

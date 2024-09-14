@@ -31,17 +31,9 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender){
-            var storagedData = await _localStorage.GetItemAsync<IList<TodoItem>>("todos");
-            if(storagedData != null)
-            {
-                todos = storagedData;
-            }
-            else{
-                todos = await _context.TodoItems.ToListAsync();
-            }
+            todos = await _context.TodoItems.ToListAsync();
             StateHasChanged();
         }
-        
     }
 
     private string IsCompleted(bool isCompleted)
@@ -60,7 +52,8 @@
                 CreatedDate = DateTime.Now
             };
             todos.Add(newTodo);
-            await _localStorage.SetItemAsync("todos", todos);
+            await _context.TodoItems.AddAsync(newTodo);
+            await SaveTodosAsync();
             newTask = "";
             StateHasChanged();
         }
@@ -70,17 +63,13 @@
     private async Task DeleteTodo(TodoItem todo)
     {
         todos.Remove(todo);
-        await _localStorage.SetItemAsync("todos", todos);
+        _context.TodoItems.Remove(todo);
+        await SaveTodosAsync();
         StateHasChanged();
     }
 
     private async Task SaveTodosAsync()
     {
-        var storedData = await _localStorage.GetItemAsync<IList<TodoItem>>("todos");
-        if(storedData != null && storedData.Count == todos.Count)
-        {
-            _context.TodoItems.UpdateRange(storedData);
-            await _context.SaveChangesAsync();
-        }
+        await _context.SaveChangesAsync();
     }
 }

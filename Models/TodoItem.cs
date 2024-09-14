@@ -1,3 +1,5 @@
+using ToDoListApp.Enums;
+
 namespace ToDoListApp.Models
 {
     public class TodoItem
@@ -7,5 +9,6 @@ namespace ToDoListApp.Models
         public bool IsCompleted { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime? DueDate { get; set; }
+        public Frequency Frequency  { get; set; }
     }
 }

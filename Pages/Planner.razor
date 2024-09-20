@@ -1,0 +1,96 @@
+@page "/planner"
+@using OpenAI.Interfaces
+@using OpenAI.ObjectModels.RequestModels
+@using ToDoListApp.Models
+@inject IOpenAIService _openAiService
+@inject TodoListDbContext _context
+@* @inject IHttpClientFactory HttpClientFactory *@
+@inject HttpClient httpClient
+
+<h3>Task Planner</h3>
+
+<div class="form-group">
+    <label for="mainTask">Enter your main task:</label>
+    <input id="mainTask" class="form-control" @bind="mainTask" />
+</div>
+
+<button class="btn btn-primary mt-2" @onclick="GenerateSubtasks">Generate Subtasks
+     @if (isLoading)
+        {
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        }
+</button>
+
+@if (subtasks != null && subtasks.Any())
+{
+    <h4 class="mt-4">Subtasks:</h4>
+    <ul class="list-group">
+        @foreach (var subtask in subtasks)
+        {
+            <li class="list-group-item">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="subtask.IsCompleted" id="@subtask.Id">
+                    <label class="form-check-label" for="@subtask.Id">
+                        @subtask.Task
+                    </label>
+                </div>
+            </li>
+        }
+    </ul>
+    <button class="btn btn-success mt-2" @onclick="SaveSelectedSubtasks">Save Selected Subtasks</button>
+}
+
+@code {
+    private string mainTask = "";
+    private List<TodoItem>? subtasks;
+    private bool isLoading = false;
+
+    private async Task GenerateSubtasks()
+    {
+        isLoading = true;
+        StateHasChanged();
+        if (!string.IsNullOrWhiteSpace(mainTask))
+        {
+            var request = new AiRequest
+            {
+                Messages = new List<ChatMessage>
+                    {
+                        ChatMessage.FromSystem("You are a helpful assistant that break down the task provided into step-by-step subtask headings and present only the subtask titles in a list format, without adding any additional content."),
+                        ChatMessage.FromUser($"Could you assist me in breaking down the task of learning {mainTask} into a 30-day learning schedule with step-by-step subtask headings")
+                    }
+            };
+            @* var httpClient = HttpClientFactory.CreateClient("ApiClient"); *@
+            var response = await httpClient.PostAsJsonAsync("api/planner/generate-subtasks", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                isLoading = false;
+                var aiResponse = await response.Content.ReadFromJsonAsync<AiResponse>();
+                if(aiResponse != null && aiResponse.Successful)
+                {
+                    subtasks = aiResponse.Content.Split('\n')
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .Select(s => new TodoItem { Task = s.TrimStart('-', ' '), IsCompleted = false })
+                                    .ToList();
+                }
+            }
+            else
+            {
+                // Handle error
+            }
+        }
+    }
+
+    private async Task SaveSelectedSubtasks()
+    {
+        if (subtasks != null && subtasks.Any(s => s.IsCompleted))
+        {
+            foreach (var subtask in subtasks.Where(s => s.IsCompleted))
+            {
+                await _context.TodoItems.AddAsync(subtask);
+            }
+            await _context.SaveChangesAsync();
+            // Optionally, clear the form or show a success message
+        }
+    }
+}

@@ -1,7 +1,5 @@
 ﻿@page "/"
 @inject TodoListDbContext _context
-@inject ILocalStorageService _localStorage
-
 
 <div class="d-flex flex-row">
     <input type="text" @bind-value="newTask" placeholder="Add a new task"/>

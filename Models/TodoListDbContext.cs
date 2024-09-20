@@ -8,6 +8,4 @@ public class TodoListDbContext : DbContext
         
     }
     public DbSet<TodoItem> TodoItems { get; set; }
-
-    
 }
